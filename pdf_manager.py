@@ -8,7 +8,7 @@ def process_large_pdf(
     input_pdf_path: str,
     output_pdf_path: str,
     translator_engine: PDFTranslatorEngine,
-    chunk_size: int = 20,
+    chunk_size: int = 15,
     progress_callback=None
 ):
     doc = fitz.open(input_pdf_path)
