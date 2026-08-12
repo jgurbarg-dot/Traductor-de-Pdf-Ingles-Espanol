@@ -1,66 +1,28 @@
 # translator_engine.py
 import fitz  # PyMuPDF
-from openai import OpenAI
-from config import SYSTEM_PROMPT_CHEMENG
+from deep_translator import GoogleTranslator
 
 class PDFTranslatorEngine:
-    def __init__(self, api_key: str, model_name: str = "gpt-4o-mini"):
-        self.client = OpenAI(api_key=api_key)
-        self.model = model_name
+    def __init__(self, target_lang: str = "es"):
+        self.translator = GoogleTranslator(source="en", target=target_lang)
 
     def translate_text_batch(self, text_list: list[str]) -> list[str]:
         if not text_list:
             return []
-
-        delimiter = "\n---BLOCK_DELIMITER---\n"
-        joined_text = delimiter.join(text_list)
-
-        user_prompt = (
-            "Traduce los siguientes bloques de texto pertenecientes a un libro/documento de ingeniería química. "
-            "Respeta el delimitador '---BLOCK_DELIMITER---' exactamente entre cada bloque traducido.\n\n"
-            f"TEXTO A TRADUCIR:\n{joined_text}"
-        )
-
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                temperature=0.2,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT_CHEMENG},
-                    {"role": "user", "content": user_prompt}
-                ]
-            )
-
-            translated_raw = response.choices[0].message.content
-            translated_blocks = translated_raw.split("---BLOCK_DELIMITER---")
-            translated_blocks = [b.strip() for b in translated_blocks]
-            
-            if len(translated_blocks) != len(text_list):
-                return self._translate_individual_fallback(text_list)
-
-            return translated_blocks
-        except Exception as e:
-            return self._translate_individual_fallback(text_list)
-
-    def _translate_individual_fallback(self, text_list: list[str]) -> list[str]:
-        results = []
+        
+        translated_results = []
         for text in text_list:
             if not text.strip():
-                results.append("")
+                translated_results.append("")
                 continue
             try:
-                res = self.client.chat.completions.create(
-                    model=self.model,
-                    temperature=0.2,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT_CHEMENG},
-                        {"role": "user", "content": f"Traduce este texto al español manteniendo unidades y formato:\n{text}"}
-                    ]
-                )
-                results.append(res.choices[0].message.content.strip())
+                # Traduce texto respetando el límite de caracteres por bloque
+                res = self.translator.translate(text[:4500])
+                translated_results.append(res if res else text)
             except Exception:
-                results.append(text)
-        return results
+                # Si falla un bloque individual, devuelve el texto original para no romper el PDF
+                translated_results.append(text)
+        return translated_results
 
     def translate_page(self, page: fitz.Page) -> None:
         blocks = page.get_text("blocks")
