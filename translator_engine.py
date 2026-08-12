@@ -16,11 +16,9 @@ class PDFTranslatorEngine:
                 translated_results.append("")
                 continue
             try:
-                # Traduce texto respetando el límite de caracteres por bloque
                 res = self.translator.translate(text[:4500])
                 translated_results.append(res if res else text)
             except Exception:
-                # Si falla un bloque individual, devuelve el texto original para no romper el PDF
                 translated_results.append(text)
         return translated_results
 
